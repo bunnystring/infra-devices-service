@@ -4,7 +4,6 @@ import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface DeviceService {
