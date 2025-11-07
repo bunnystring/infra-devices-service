@@ -138,7 +138,7 @@ public class DeviceController {
     @ApiResponse(responseCode = "200", description = "Lista filtrada",
             content = @Content(array = @ArraySchema(schema = @Schema(implementation = DeviceRs.class))))
     @GetMapping("/statuses")
-    public ResponseEntity<List<DeviceRs>> getDevicesByStatuses(@RequestBody List<DeviceStatusEnum> statuses) {
+    public ResponseEntity<List<DeviceRs>> getDevicesByStatuses(@RequestParam List<DeviceStatusEnum> statuses) {
         return ResponseEntity.ok(deviceService.getDevicesByStatuses(statuses));
     }
 

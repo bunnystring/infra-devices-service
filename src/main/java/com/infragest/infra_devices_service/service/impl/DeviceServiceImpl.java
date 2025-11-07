@@ -16,12 +16,29 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Implementación del servicio {@link DeviceService} que gestiona la lógica de negocio
+ * para las operaciones CRUD sobre la entidad {@link Device}.
+ *
+ * Proporciona métodos para crear, consultar, listar por estado(s) y eliminar dispositivos.
+ *
+ * @author bunnystring
+ * @since 2025-11-07
+ */
 @Slf4j
 @Service
 public class DeviceServiceImpl implements DeviceService {
 
+    /**
+     * deviceRepository: Repositorio de dispositivos.
+     */
     private final DeviceRepository deviceRepository;
 
+    /**
+     * Constructor para la inyección de dependencias.
+     *
+     * @param deviceRepository
+     */
     public DeviceServiceImpl(
             DeviceRepository deviceRepository)
     {
@@ -31,13 +48,17 @@ public class DeviceServiceImpl implements DeviceService {
     /**
      * Crea y persiste un nuevo dispositivo.
      *
+     * Válida que no exista ya un dispositivo con el mismo barcode; en caso contrario
+     * lanza {@link DeviceException} con tipo {@code BAD_REQUEST}. Si ocurre un error
+     * de integridad en la persistencia se lanza {@link DeviceException} con tipo
+     * {@code INTERNAL_SERVER}.
+     *
      * @param request datos del dispositivo a crear
      * @return DeviceRs con los datos persistidos
-     * @throws DeviceException si ya existe un dispositivo con el mismo barcode
+     * @throws DeviceException si ya existe un dispositivo con el mismo barcode o si ocurre un error interno
      *
      * @author bunnystring
      * @since 2025-11-07
-     * @version 1.2
      */
     @Transactional
     @Override
@@ -71,6 +92,13 @@ public class DeviceServiceImpl implements DeviceService {
         }
     }
 
+    /**
+     * Obtiene un dispositivo por su identificador UUID.
+     *
+     * @param id identificador UUID del dispositivo
+     * @return {@link DeviceRs} correspondiente
+     * @throws DeviceException si no se encuentra el dispositivo (tipo NOT_FOUND)
+     */
     @Override
     public DeviceRs getDeviceById(UUID id) {
 
@@ -83,6 +111,13 @@ public class DeviceServiceImpl implements DeviceService {
         return buildDeviceRs(device);
     }
 
+    /**
+     * Obtiene la entidad {@link Device} por su código de barras.
+     *
+     * @param barcode código de barras del dispositivo
+     * @return entidad {@link Device}
+     * @throws DeviceException si no se encuentra el dispositivo (tipo NOT_FOUND)
+     */
     @Override
     public Device getDeviceByBarcode(String barcode) {
         return deviceRepository.findByBarcode(barcode)
@@ -121,12 +156,25 @@ public class DeviceServiceImpl implements DeviceService {
         return buildDeviceRsList(devices);
     }
 
+    /**
+     * Devuelve los dispositivos cuyos estados están contenidos en la lista indicada.
+     *
+     * @param statuses lista de {@link DeviceStatusEnum} para filtrar
+     * @return lista de {@link DeviceRs} (puede ser vacía)
+     * @throws IllegalArgumentException si {@code statuses} es nula (se asume no nula en el flujo actual)
+     */
     @Override
     public List<DeviceRs> getDevicesByStatuses(List<DeviceStatusEnum> statuses) {
         List<Device> devices = deviceRepository.findAllByStatusIn(statuses);
         return buildDeviceRsList(devices);
     }
 
+    /**
+     * Elimina un dispositivo por su id.
+     *
+     * @param id identificador UUID del dispositivo a eliminar
+     * @throws DeviceException si no existe el dispositivo (tipo NOT_FOUND)
+     */
     @Override
     public void deleteDevice(UUID id) {
         if (!deviceRepository.existsById(id)) {
