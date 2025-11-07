@@ -3,12 +3,16 @@ package com.infragest.infra_devices_service.service.impl;
 import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.exception.DeviceException;
+import com.infragest.infra_devices_service.model.CreateDeviceRq;
+import com.infragest.infra_devices_service.model.DeviceRs;
 import com.infragest.infra_devices_service.repository.DeviceRepository;
 import com.infragest.infra_devices_service.service.DeviceService;
 import com.infragest.infra_devices_service.util.MessageException;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,30 +22,65 @@ public class DeviceServiceImpl implements DeviceService {
 
     private final DeviceRepository deviceRepository;
 
-    public DeviceServiceImpl(DeviceRepository deviceRepository) {
+    public DeviceServiceImpl(
+            DeviceRepository deviceRepository)
+    {
         this.deviceRepository = deviceRepository;
     }
 
+    /**
+     * Crea y persiste un nuevo dispositivo.
+     *
+     * @param request datos del dispositivo a crear
+     * @return DeviceRs con los datos persistidos
+     * @throws DeviceException si ya existe un dispositivo con el mismo barcode
+     *
+     * @author bunnystring
+     * @since 2025-11-07
+     * @version 1.2
+     */
+    @Transactional
     @Override
-    public Device saveDevice(Device device) {
+    public DeviceRs saveDevice(CreateDeviceRq request) {
 
-        if (deviceRepository.findByBarcode(device.getBarcode()).isPresent()) {
+        // Validar si ya existe un dispositivo con el mismo barcode, se lanza excepción de negocio.
+        if (deviceRepository.findByBarcode(request.getBarcode()).isPresent()) {
             throw new DeviceException(
-                    String.format(MessageException.DEVICE_ALREADY_EXISTS, device.getBarcode()),
+                    String.format(MessageException.DEVICE_ALREADY_EXISTS, request.getBarcode()),
                     DeviceException.Type.BAD_REQUEST
             );
         }
 
-        return deviceRepository.save(device);
+        // Construcción de la entidad Device a partir del DTO. Se hace trim de los campos de texto para normalizar la entrada.
+        Device deviceEntity = new Device();
+        deviceEntity.setName(request.getName() != null ? request.getName().trim() : null);
+        deviceEntity.setBrand(request.getBrand() != null ? request.getBrand().trim() : null);
+        deviceEntity.setBarcode(request.getBarcode() != null ? request.getBarcode().trim() : null);
+        deviceEntity.setStatus(request.getStatus());
+
+        try {
+
+            // Persistir la entidad.
+            Device saved = deviceRepository.save(deviceEntity);
+
+            return buildDeviceRs(deviceEntity);
+
+        } catch (org.springframework.dao.DataIntegrityViolationException ex){
+            log.error("Error al crear Device", ex);
+            throw new DeviceException("Ha Ocurrido un error interno en el servidor", DeviceException.Type.INTERNAL_SERVER);
+        }
     }
 
     @Override
-    public Device getDeviceById(UUID id) {
-        return deviceRepository.findById(id)
+    public DeviceRs getDeviceById(UUID id) {
+
+        Device device = deviceRepository.findById(id)
                 .orElseThrow(() -> new DeviceException(
                         String.format(MessageException.DEVICE_NOT_FOUND_BY_ID, id),
                         DeviceException.Type.NOT_FOUND
                 ));
+
+        return buildDeviceRs(device);
     }
 
     @Override
@@ -53,19 +92,39 @@ public class DeviceServiceImpl implements DeviceService {
                 ));
     }
 
+    /**
+     * Devuelve todos los dispositivos como DTO {@code DeviceRs}.
+     *
+     * @return lista de {@code DeviceRs} (puede ser vacía)
+     *
+     * @author bunnystring
+     * @since 2025-11-07
+     */
     @Override
-    public List<Device> getAllDevices() {
-        return deviceRepository.findAll();
+    public List<DeviceRs> getAllDevices() {
+        List<Device> devices = deviceRepository.findAll();
+        return buildDeviceRsList(devices);
+    }
+
+    /**
+     * Devuelve los dispositivos con el {@code status} indicado como DTOs {@code DeviceRs}.
+     *
+     * @param status estado por el que filtrar
+     * @return lista de {@code DeviceRs} (puede ser vacía)
+     *
+     * @author bunnystring
+     * @since 2025-11-07
+     */
+    @Override
+    public List<DeviceRs> getDevicesByStatus(DeviceStatusEnum status) {
+        List<Device> devices = deviceRepository.findAllByStatus(status);
+        return buildDeviceRsList(devices);
     }
 
     @Override
-    public List<Device> getDevicesByStatus(DeviceStatusEnum status) {
-        return deviceRepository.findAllByStatus(status);
-    }
-
-    @Override
-    public List<Device> getDevicesByStatuses(List<DeviceStatusEnum> statuses) {
-        return deviceRepository.findAllByStatusIn(statuses);
+    public List<DeviceRs> getDevicesByStatuses(List<DeviceStatusEnum> statuses) {
+        List<Device> devices = deviceRepository.findAllByStatusIn(statuses);
+        return buildDeviceRsList(devices);
     }
 
     @Override
@@ -77,6 +136,46 @@ public class DeviceServiceImpl implements DeviceService {
             );
         }
         deviceRepository.deleteById(id);
+    }
+
+    /**
+     * Construye el DTO DeviceRs a partir de la entidad Device usando el builder.
+     *
+     * @param device entidad a convertir (se asume no nula)
+     * @return DeviceRs mapeado
+     *
+     * @author bunnystring
+     * @since 2025-11-07
+     */
+    private DeviceRs buildDeviceRs(Device device) {
+        return DeviceRs.builder()
+                .id(device.getId())
+                .name(device.getName())
+                .brand(device.getBrand())
+                .barcode(device.getBarcode())
+                .status(device.getStatus())
+                .createdAt(device.getCreatedAt() != null
+                        ? device.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant()
+                        : null)
+                .updatedAt(device.getUpdatedAt() != null
+                        ? device.getUpdatedAt().atZone(ZoneId.systemDefault()).toInstant()
+                        : null)
+                .build();
+    }
+
+    /**
+     * Construye una lista de {@code DeviceRs} a partir de una lista de entidades {@code Device}.
+     *
+     * @param devices lista de entidades Device (se asume no nula)
+     * @return lista de DeviceRs mapeados (puede ser vacía)
+     *
+     * @author bunnystring
+     * @since 2025-11-07
+     */
+    private List<DeviceRs> buildDeviceRsList(List<Device> devices) {
+        return devices.stream()
+                .map(this::buildDeviceRs)
+                .collect(java.util.stream.Collectors.toList());
     }
 
 }
