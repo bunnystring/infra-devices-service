@@ -31,4 +31,14 @@ public class BaseEntity {
     @Version
     @Column(name = "version")
     private Long version;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
