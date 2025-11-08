@@ -10,6 +10,15 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.Key;
 import java.util.Base64;
 
+/**
+ * Utilidad para operaciones básicas con JWT: inicializa la clave secreta,
+ * válida tokens y extrae el email (subject).
+ *
+ * Breve y directo: solo maneja verificación e extracción de subject.
+ *
+ * @author bunnystring
+ * @since 2025-11-07
+ */
 @Component
 public class JwtUtil {
 
@@ -18,6 +27,10 @@ public class JwtUtil {
 
     private Key secretKey;
 
+    /**
+     * Inicializa la clave secreta a partir del valor Base64 configurado.
+     * Se ejecuta tras la inyección de dependencias.
+     */
     @PostConstruct
     public void init() {
         byte[] keyBytes = Base64.getDecoder().decode(jwtSecretBase64);
@@ -26,6 +39,9 @@ public class JwtUtil {
 
     /**
      * Extrae el email (subject) de un token JWT.
+     *
+     * @param token JWT válido
+     * @return subject (email) contenido en el token
      */
     public String getEmailFromToken(String token) {
         return Jwts.parser()
@@ -36,7 +52,10 @@ public class JwtUtil {
     }
 
     /**
-     * Válida la integridad y validez de un token JWT.
+     * Válida la integridad y validez del token JWT.
+     *
+     * @param token JWT a validar
+     * @return true si el token es válido, false en caso contrario
      */
     public boolean validateToken(String token) {
         try {

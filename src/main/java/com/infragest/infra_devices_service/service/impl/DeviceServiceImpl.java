@@ -30,7 +30,7 @@ import java.util.UUID;
 public class DeviceServiceImpl implements DeviceService {
 
     /**
-     * deviceRepository: Repositorio de dispositivos.
+     * Inyección de dependencia: Repositorio de dispositivos.
      */
     private final DeviceRepository deviceRepository;
 

@@ -14,17 +14,42 @@ import java.io.IOException;
 import java.util.Collections;
 
 /**
- * Filtro para validar JWT en cada petición y cargar el usuario autenticado en el contexto.
+ * Filtro que válida JWT en cada petición y carga la autenticación en el contexto de Spring.
+ *
+ * - Espera el header Authorization con el esquema "Bearer &lt;token&gt;".
+ * - Si el token es válido, extrae el email y crea una {@link Authentication}.
+ * - Si falta o es inválido, responde 401 y corta la cadena de filtros.
+ *
+ * Solo válida el token y pone la autenticación en SecurityContext.
  */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    /**
+     * Inyección de dependencia: Configuración jwtUtil.
+     */
     private final JwtUtil jwtUtil;
 
+    /**
+     * Constructor para la inyección de dependencias.
+     * @param jwtUtil
+     */
     public JwtAuthFilter(JwtUtil jwtUtil) {
         this.jwtUtil = jwtUtil;
     }
 
+    /**
+     * Procesa la petición HTTP, válida el token JWT y, en caso válido,
+     * establece la {@link Authentication} en él {@link SecurityContextHolder}.
+     *
+     * Si el header Authorization falta o el token es inválido, devuelve 401 con un mensaje breve.
+     *
+     * @param request  petición HTTP entrante
+     * @param response respuesta HTTP
+     * @param filterChain cadena de filtros
+     * @throws ServletException sí ocurre un error del servlet
+     * @throws IOException si ocurre un error de E/S
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
