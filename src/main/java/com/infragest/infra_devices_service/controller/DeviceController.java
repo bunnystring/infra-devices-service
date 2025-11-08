@@ -33,7 +33,7 @@ import java.util.UUID;
 public class DeviceController {
 
     /**
-     * deviceService: Servicio de operaciones de dispositivos.
+     * Inyección de la dependencia: deviceService.
      */
     private final DeviceService deviceService;
 
