@@ -158,4 +158,29 @@ public class DeviceController {
         deviceService.deleteDevice(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Actualiza un dispositivo existente.
+     *
+     * El request debe incluir el barcode (campo no nulo). Se valida unicidad del barcode
+     * si este cambia. Se actualizan los campos presentes en el request.
+     *
+     * @param id identificador UUID del dispositivo
+     * @param createDeviceRq payload con los datos actualizados (barcode obligatorio)
+     * @return DeviceRs actualizado
+     */
+    @Operation(summary = "Actualizar dispositivo")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Device actualizado",
+                    content = @Content(schema = @Schema(implementation = DeviceRs.class))),
+            @ApiResponse(responseCode = "400", description = "Solicitud inválida / conflicto de barcode", content = @Content),
+            @ApiResponse(responseCode = "404", description = "No encontrado", content = @Content),
+            @ApiResponse(responseCode = "500", description = "Error interno", content = @Content)
+    })
+    @PutMapping("/{id}")
+    public ResponseEntity<DeviceRs> updateDevice(
+            @PathVariable UUID id,
+            @Valid @RequestBody CreateDeviceRq createDeviceRq) {
+        return ResponseEntity.ok(deviceService.updateDevice(id, createDeviceRq));
+    }
 }

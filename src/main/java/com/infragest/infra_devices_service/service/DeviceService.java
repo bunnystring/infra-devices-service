@@ -69,4 +69,13 @@ public interface DeviceService {
      * @param id identificador UUID del dispositivo a eliminar
      */
     void deleteDevice(UUID id);
+
+    /**
+     * Actualiza un dispositivo existente y devuelve el DTO actualizado.
+     *
+     * @param id identificador UUID del dispositivo
+     * @param request datos para actualizar el dispositivo
+     * @return DeviceRs actualizado
+     */
+    DeviceRs updateDevice(UUID id, CreateDeviceRq request);
 }
