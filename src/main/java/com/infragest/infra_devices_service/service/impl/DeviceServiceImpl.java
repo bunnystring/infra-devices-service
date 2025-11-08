@@ -104,7 +104,7 @@ public class DeviceServiceImpl implements DeviceService {
 
         Device device = deviceRepository.findById(id)
                 .orElseThrow(() -> new DeviceException(
-                        String.format(MessageException.DEVICE_NOT_FOUND_BY_ID, id),
+                        String.format(MessageException.DEVICE_ALREADY_EXISTS, id),
                         DeviceException.Type.NOT_FOUND
                 ));
 
@@ -224,6 +224,60 @@ public class DeviceServiceImpl implements DeviceService {
         return devices.stream()
                 .map(this::buildDeviceRs)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Actualiza un dispositivo existente.
+     *
+     * - Lanza {@link DeviceException} tipo NOT_FOUND si no existe el dispositivo.
+     * - Lanza {@link DeviceException} tipo BAD_REQUEST si el barcode ya está en uso por otro dispositivo.
+     *
+     * @param id identificador UUID del dispositivo
+     * @param request datos para actualizar
+     * @return DeviceRs actualizado
+     */
+    @Transactional
+    @Override
+    public DeviceRs updateDevice(UUID id, CreateDeviceRq request) {
+
+        Device device = deviceRepository.findById(id)
+                .orElseThrow( () -> new DeviceException(
+                        String.format(MessageException.DEVICE_NOT_FOUND_BY_ID, id),
+                        DeviceException.Type.NOT_FOUND
+                ));
+
+        // Si se intenta cambiar el barcode, asegurar unicidad (si otro registro lo tiene -> BAD_REQUEST)
+        String newBarcode = request.getBarcode() != null ? request.getBarcode().trim() : null;
+        if (newBarcode != null && !newBarcode.equals(device.getBarcode())) {
+            deviceRepository.findByBarcode(newBarcode).ifPresent(existing -> {
+                if (!existing.getId().equals(id)) {
+                    throw new DeviceException(
+                            String.format(MessageException.DEVICE_BARCODE_ALREADY_EXISTS, newBarcode),
+                            DeviceException.Type.BAD_REQUEST
+                    );
+                }
+            });
+            device.setBarcode(newBarcode);
+        }
+
+        // Actualizar otros campos (hacer trim/null checks)
+        if (request.getName() != null) {
+            device.setName(request.getName().trim());
+        }
+        if (request.getBrand() != null) {
+            device.setBrand(request.getBrand().trim());
+        }
+        if (request.getStatus() != null) {
+            device.setStatus(request.getStatus());
+        }
+
+        try {
+            Device saved = deviceRepository.save(device);
+            return buildDeviceRs(saved);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            log.error("Error al actualizar Device {}", id, ex);
+            throw new DeviceException(MessageException.DEVICE_ERROR_SAVING, DeviceException.Type.INTERNAL_SERVER);
+        }
     }
 
 }
