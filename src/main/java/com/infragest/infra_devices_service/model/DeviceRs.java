@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -52,10 +53,10 @@ public class DeviceRs {
     /**
      * Fecha/hora de creación (UTC).
      */
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     /**
      * Fecha/hora de última actualización (UTC).
      */
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 }

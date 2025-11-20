@@ -5,16 +5,18 @@ import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.exception.DeviceException;
 import com.infragest.infra_devices_service.model.CreateDeviceRq;
 import com.infragest.infra_devices_service.model.DeviceRs;
+import com.infragest.infra_devices_service.model.DevicesBatchRq;
 import com.infragest.infra_devices_service.repository.DeviceRepository;
 import com.infragest.infra_devices_service.service.DeviceService;
 import com.infragest.infra_devices_service.util.MessageException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.time.ZoneId;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Implementación del servicio {@link DeviceService} que gestiona la lógica de negocio
@@ -203,10 +205,10 @@ public class DeviceServiceImpl implements DeviceService {
                 .barcode(device.getBarcode())
                 .status(device.getStatus())
                 .createdAt(device.getCreatedAt() != null
-                        ? device.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant()
+                        ? device.getCreatedAt()
                         : null)
                 .updatedAt(device.getUpdatedAt() != null
-                        ? device.getUpdatedAt().atZone(ZoneId.systemDefault()).toInstant()
+                        ? device.getUpdatedAt()
                         : null)
                 .build();
     }
@@ -278,6 +280,46 @@ public class DeviceServiceImpl implements DeviceService {
             log.error("Error al actualizar Device {}", id, ex);
             throw new DeviceException(MessageException.DEVICE_ERROR_SAVING, DeviceException.Type.INTERNAL_SERVER);
         }
+    }
+
+    /**
+     * Recupera información de múltiples devices por sus UUIDs y devuelve una
+     * representación dinámica (List of Map) apropiada para consumo por otros microservicios
+     * que esperan JSON libre (por ejemplo, un cliente Feign que mapea a Map).
+     *
+     * @param ids lista de UUID a recuperar; si es {@code null} o vacía devuelve lista vacía
+     * @return lista de mapas con campos relevantes por device (id, barcode, brand, name, status, createdAt, updatedAt)
+     * @throws RuntimeException si ocurre un error de acceso a datos (envuelto)
+     */
+    @Override
+    @Transactional()
+    public List<Map<String, Object>>getDevicesByIds(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return Collections.emptyList();
+        try {
+            List<Device> devices = deviceRepository.findAllById(ids);
+            return devices.stream().map(this::toMap).collect(Collectors.toList());
+        } catch (DataAccessException dae) {
+            log.error("Error reading devices by ids {}", ids, dae);
+            throw new DeviceException(MessageException.DEVICE_NOT_FOUND_BY_ID, DeviceException.Type.INTERNAL_SERVER);
+        }
+    }
+
+    /**
+     * Construye un mapa con los campos relevantes de la entidad {@link Device}.
+     *
+     * @param d entidad Device (no nula)
+     * @return mapa con claves: id, barcode, brand, name, status, createdAt, updatedAt
+     */
+    private Map<String, Object> toMap(Device d) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", d.getId());
+        m.put("barcode", d.getBarcode());
+        m.put("brand", d.getBrand());
+        m.put("name", d.getName());
+        m.put("status", d.getStatus());
+        m.put("createdAt", d.getCreatedAt());
+        m.put("updatedAt", d.getUpdatedAt());
+        return m;
     }
 
 }
