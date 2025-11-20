@@ -2,9 +2,7 @@ package com.infragest.infra_devices_service.controller;
 
 import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
-import com.infragest.infra_devices_service.model.CreateDeviceRq;
-import com.infragest.infra_devices_service.model.DeviceRs;
-import com.infragest.infra_devices_service.model.DevicesBatchRq;
+import com.infragest.infra_devices_service.model.*;
 import com.infragest.infra_devices_service.service.DeviceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -205,4 +203,39 @@ public class DeviceController {
     public ResponseEntity<List<Map<String, Object>>> getDevicesByIds(@Valid @RequestBody DevicesBatchRq rq) {
         return ResponseEntity.ok(deviceService.getDevicesByIds(rq.getIds()));
     }
+
+    /**
+     * Reserva (o actualiza) el estado de una lista de devices.
+     */
+    @Operation(summary = "Reservar/actualizar estado de varios devices")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Operación procesada"),
+            @ApiResponse(responseCode = "400", description = "Request inválido"),
+            @ApiResponse(responseCode = "500", description = "Error interno")
+    })
+    @PostMapping("/reserve")
+    public ResponseEntity<Map<String, Object>> reserveDevices(@Valid @RequestBody ReserveDevicesRq rq) {
+        Map<String, Object> resp = deviceService.reserveDevices(rq.getDeviceIds(), rq.getState());
+        return ResponseEntity.ok(resp);
+    }
+
+
+    /**
+     * Restaura estados originales de varios devices.
+     *
+     */
+    @Operation(summary = "Restaurar estados originales de devices")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Operación procesada"),
+            @ApiResponse(responseCode = "400", description = "Request inválido"),
+            @ApiResponse(responseCode = "500", description = "Error interno")
+    })
+    @PostMapping("/restore")
+    public ResponseEntity<Map<String, Object>> restoreDevices(@Valid @RequestBody RestoreDevicesRq rq) {
+
+        // Delegamos el listado tipado de RestoreItem directamente al servicio
+        Map<String, Object> resp = deviceService.restoreDeviceStates(rq.getItems());
+        return ResponseEntity.ok(resp);
+    }
+
 }

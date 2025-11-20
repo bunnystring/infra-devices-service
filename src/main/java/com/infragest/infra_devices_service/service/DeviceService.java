@@ -5,6 +5,7 @@ import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.model.CreateDeviceRq;
 import com.infragest.infra_devices_service.model.DeviceRs;
 import com.infragest.infra_devices_service.model.DevicesBatchRq;
+import com.infragest.infra_devices_service.model.RestoreDevicesRq;
 
 import java.util.List;
 import java.util.Map;
@@ -90,5 +91,22 @@ public interface DeviceService {
      * @return lista de mapas con campos relevantes por device (id, barcode, brand, name, status, createdAt, updatedAt)
      */
     List<Map<String, Object>> getDevicesByIds(List<UUID> ids);
+
+    /**
+     * Reserva/actualiza el estado de los devices indicados.
+     *
+     * @param ids  lista de UUIDs de devices a actualizar
+     * @param state estado objetivo como {@link DeviceStatusEnum}
+     * @return mapa con al menos {"success": Boolean} y opcional "message"
+     */
+    Map<String, Object> reserveDevices(List<UUID> ids, DeviceStatusEnum state);
+
+    /**
+     * Restaura estados originales de devices.
+     *
+     * @param items lista de {@link RestoreDevicesRq.RestoreItem} con deviceId y state
+     * @return mapa con al menos {"success": Boolean} y opcional "message"
+     */
+    Map<String, Object> restoreDeviceStates(List<RestoreDevicesRq.RestoreItem> items);
 
 }
