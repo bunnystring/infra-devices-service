@@ -6,6 +6,7 @@ import com.infragest.infra_devices_service.exception.DeviceException;
 import com.infragest.infra_devices_service.model.CreateDeviceRq;
 import com.infragest.infra_devices_service.model.DeviceRs;
 import com.infragest.infra_devices_service.model.DevicesBatchRq;
+import com.infragest.infra_devices_service.model.RestoreDevicesRq;
 import com.infragest.infra_devices_service.repository.DeviceRepository;
 import com.infragest.infra_devices_service.service.DeviceService;
 import com.infragest.infra_devices_service.util.MessageException;
@@ -301,6 +302,88 @@ public class DeviceServiceImpl implements DeviceService {
         } catch (DataAccessException dae) {
             log.error("Error reading devices by ids {}", ids, dae);
             throw new DeviceException(MessageException.DEVICE_NOT_FOUND_BY_ID, DeviceException.Type.INTERNAL_SERVER);
+        }
+    }
+
+    /**
+     * Reserva/actualiza el estado de los devices indicados.
+     *
+     * @param ids lista de UUIDs
+     * @param state estado objetivo como {@link DeviceStatusEnum}
+     * @return mapa con la respuesta de la operación
+     */
+    @Override
+    @Transactional
+    public Map<String, Object> reserveDevices(List<UUID> ids, DeviceStatusEnum state) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of("success", false, "message", "deviceIds empty");
+        }
+
+        try {
+            List<Device> found = deviceRepository.findAllById(ids);
+            Set<UUID> foundIds = found.stream().map(Device::getId).collect(Collectors.toSet());
+            List<UUID> missing = ids.stream().filter(id -> !foundIds.contains(id)).collect(Collectors.toList());
+            if (!missing.isEmpty()) {
+                return Map.of("success", false, "message", "Devices not found: " + missing);
+            }
+
+            found.forEach(d -> d.setStatus(state));
+            deviceRepository.saveAll(found);
+            return Map.of("success", true);
+        } catch (DataAccessException dae) {
+            log.error("Error reservando devices {} -> {}", ids, dae.getMessage(), dae);
+            return Map.of("success", false, "message", "DB error");
+        }
+    }
+
+    /**
+     * Restaura los estados originales de una lista de devices.
+     *
+     * @param items lista de {@link RestoreDevicesRq.RestoreItem}
+     * @return mapa con la respuesta de la operación
+     */
+    @Override
+    @Transactional
+    public Map<String, Object> restoreDeviceStates(List<RestoreDevicesRq.RestoreItem> items) {
+        if (items == null || items.isEmpty()) {
+            return Map.of("success", false, "message", "items empty");
+        }
+
+        try {
+            // extraer ids y mapear estado a aplicar por id
+            List<UUID> ids = items.stream()
+                    .map(RestoreDevicesRq.RestoreItem::getDeviceId)
+                    .collect(Collectors.toList());
+
+            List<Device> found = deviceRepository.findAllById(ids);
+            Set<UUID> foundIds = found.stream().map(Device::getId).collect(Collectors.toSet());
+            List<UUID> missing = ids.stream().filter(id -> !foundIds.contains(id)).collect(Collectors.toList());
+            if (!missing.isEmpty()) {
+                return Map.of("success", false, "message", "Devices not found: " + missing);
+            }
+
+            // Aplicar los estados provistos (ya como DeviceStatusEnum)
+            Map<UUID, DeviceStatusEnum> idToState = new HashMap<>();
+            for (RestoreDevicesRq.RestoreItem it : items) {
+                idToState.put(it.getDeviceId(), it.getState());
+            }
+
+            for (Device d : found) {
+                DeviceStatusEnum target = idToState.get(d.getId());
+                if (target == null) {
+                    return Map.of("success", false, "message", "Missing state for device " + d.getId());
+                }
+                d.setStatus(target);
+            }
+
+            deviceRepository.saveAll(found);
+            return Map.of("success", true);
+        } catch (DataAccessException dae) {
+            log.error("Error restaurando devices {}", dae.getMessage(), dae);
+            return Map.of("success", false, "message", "DB error");
+        } catch (Exception ex) {
+            log.error("Error procesando restore items {}", ex.getMessage(), ex);
+            return Map.of("success", false, "message", "Invalid request payload");
         }
     }
 
