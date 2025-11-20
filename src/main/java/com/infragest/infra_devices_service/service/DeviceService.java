@@ -4,8 +4,10 @@ import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.model.CreateDeviceRq;
 import com.infragest.infra_devices_service.model.DeviceRs;
+import com.infragest.infra_devices_service.model.DevicesBatchRq;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -78,4 +80,15 @@ public interface DeviceService {
      * @return DeviceRs actualizado
      */
     DeviceRs updateDevice(UUID id, CreateDeviceRq request);
+
+    /**
+     * Recupera información de múltiples devices por sus UUIDs y devuelve una
+     * representación dinámica (List of Map) apropiada para consumo por otros microservicios
+     * que esperan JSON libre (por ejemplo, un cliente Feign que mapea la respuesta a Map).
+     *
+     * @param ids lista de UUID a recuperar; si es {@code null} o vacía devuelve lista vacía
+     * @return lista de mapas con campos relevantes por device (id, barcode, brand, name, status, createdAt, updatedAt)
+     */
+    List<Map<String, Object>> getDevicesByIds(List<UUID> ids);
+
 }

@@ -4,6 +4,7 @@ import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.model.CreateDeviceRq;
 import com.infragest.infra_devices_service.model.DeviceRs;
+import com.infragest.infra_devices_service.model.DevicesBatchRq;
 import com.infragest.infra_devices_service.service.DeviceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -16,8 +17,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Controller REST para operaciones sobre dispositivos.
@@ -182,5 +186,23 @@ public class DeviceController {
             @PathVariable UUID id,
             @Valid @RequestBody CreateDeviceRq createDeviceRq) {
         return ResponseEntity.ok(deviceService.updateDevice(id, createDeviceRq));
+    }
+
+    /**
+     * Obtiene información de varios devices por sus IDs.
+     *
+     * @param rq body { "ids": [uuid, ...] }
+     * @return lista de mapas con la información de cada device (id, state, model, barcode, ...)
+     */
+    @Operation(summary = "Obtener información de varios devices por IDs (batch)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista de devices"),
+            @ApiResponse(responseCode = "400", description = "Request inválido"),
+            @ApiResponse(responseCode = "404", description = "Algún device no encontrado (opcional)"),
+            @ApiResponse(responseCode = "500", description = "Error interno")
+    })
+    @PostMapping("/batch")
+    public ResponseEntity<List<Map<String, Object>>> getDevicesByIds(@Valid @RequestBody DevicesBatchRq rq) {
+        return ResponseEntity.ok(deviceService.getDevicesByIds(rq.getIds()));
     }
 }
