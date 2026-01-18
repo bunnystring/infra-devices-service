@@ -228,4 +228,23 @@ public class DeviceController {
         // Crear la respuesta usando ResponseFactory
         return ResponseEntity.ok(ResponseFactory.success("Estados actualizados exitosamente.", null));
     }
+
+    /**
+     * Restaura estados originales de varios devices.
+     *
+     */
+    @Operation(summary = "Restaurar estados originales de devices")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Operación procesada"),
+            @ApiResponse(responseCode = "400", description = "Request inválido"),
+            @ApiResponse(responseCode = "500", description = "Error interno")
+    })
+    @PostMapping("/restore")
+    public ResponseEntity<Map<String, Object>> restoreDevices(@Valid @RequestBody RestoreDevicesRq rq) {
+
+        // Delegamos el listado tipado de RestoreItem directamente al servicio
+        Map<String, Object> resp = deviceService.restoreDeviceStates(rq.getItems());
+        return ResponseEntity.ok(resp);
+    }
+
 }

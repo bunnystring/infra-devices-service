@@ -4,7 +4,7 @@ import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.model.CreateDeviceRq;
 import com.infragest.infra_devices_service.model.DeviceRs;
-import com.infragest.infra_devices_service.model.DevicesBatchRq;
+import com.infragest.infra_devices_service.model.RestoreDevicesRq;
 
 import java.util.List;
 import java.util.Map;
@@ -75,7 +75,7 @@ public interface DeviceService {
     /**
      * Actualiza un dispositivo existente y devuelve el DTO actualizado.
      *
-     * @param id identificador UUID del dispositivo
+     * @param id      identificador UUID del dispositivo
      * @param request datos para actualizar el dispositivo
      * @return DeviceRs actualizado
      */
@@ -95,9 +95,27 @@ public interface DeviceService {
      * Actualiza los estados de una lista de dispositivos.
      *
      * @param deviceIds Lista de IDs de los dispositivos a actualizar.
-     * @param state El nuevo estado que se aplicará a los dispositivos.
+     * @param state     El nuevo estado que se aplicará a los dispositivos.
      * @throws DeviceNotFoundException Si alguno de los dispositivos no existe en la base de datos.
-     * @throws DeviceException Sí ocurre algún otro problema durante la actualización.
+     * @throws DeviceException         Sí ocurre algún otro problema durante la actualización.
      */
     void updateDeviceStates(List<UUID> deviceIds, DeviceStatusEnum state);
+
+    /**
+     * Restaura estados originales de devices.
+     *
+     * @param items lista de {@link RestoreDevicesRq.RestoreItem} con deviceId y state
+     * @return mapa con al menos {"success": Boolean} y opcional "message"
+     */
+    Map<String, Object> restoreDeviceStates(List<RestoreDevicesRq.RestoreItem> items);
+
+    /**
+     * Reserva/actualiza el estado de los devices indicados.
+     * *
+     *
+     * @param ids   lista de UUID de devices a actualizar
+     * @param state estado objetivo como {@link DeviceStatusEnum}
+     * @return mapa con al menos {"success": Boolean} y opcional "message"
+     */
+    Map<String, Object> reserveDevices(List<UUID> ids, DeviceStatusEnum state);
 }
