@@ -6,6 +6,9 @@ public abstract class MessageException {
     public static final String DEVICE_BARCODE_ALREADY_EXISTS = "A device with barcode %s already exists.";
     public static final String DEVICE_ERROR_SAVING = "Error saving device.";
     public static final String DEVICE_ALREADY_EXISTS = "A device %s already exists.";
+    public static final String DEVICE_IDS_CANNOT_BE_EMPTY = "The list of IDs cannot be empty.";
+    public static final String DEVICE_NOT_FOUND_BY_IDS = "The following devices were not found: %s.";
+    public static final String DEVICE_ERROR_UPDATING_STATES = "An error occurred while updating the states of devices.";
 
     private MessageException() {
     }
