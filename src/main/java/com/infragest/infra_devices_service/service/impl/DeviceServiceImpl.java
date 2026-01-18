@@ -5,7 +5,6 @@ import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.exception.DeviceException;
 import com.infragest.infra_devices_service.model.CreateDeviceRq;
 import com.infragest.infra_devices_service.model.DeviceRs;
-import com.infragest.infra_devices_service.model.DevicesBatchRq;
 import com.infragest.infra_devices_service.repository.DeviceRepository;
 import com.infragest.infra_devices_service.service.DeviceService;
 import com.infragest.infra_devices_service.util.MessageException;
@@ -14,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
-import java.time.ZoneId;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -292,7 +291,6 @@ public class DeviceServiceImpl implements DeviceService {
      * @throws RuntimeException si ocurre un error de acceso a datos (envuelto)
      */
     @Override
-    @Transactional()
     public List<Map<String, Object>>getDevicesByIds(List<UUID> ids) {
         if (ids == null || ids.isEmpty()) return Collections.emptyList();
         try {
@@ -322,4 +320,53 @@ public class DeviceServiceImpl implements DeviceService {
         return m;
     }
 
+    /**
+     * Actualiza los estados de una lista de dispositivos.
+     *
+     * @param deviceIds Lista de IDs de los dispositivos a actualizar.
+     * @param state El nuevo estado que será aplicado a cada dispositivo.
+     * @throws DeviceException Si alguno de los dispositivos no existe o si ocurre un error al actualizar.
+     */
+    @Override
+    @Transactional
+    public void updateDeviceStates(List<UUID> deviceIds, DeviceStatusEnum state) {
+        // Verificar que la lista de IDs no sea vacía o nula
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            throw new DeviceException(
+                    MessageException.DEVICE_IDS_CANNOT_BE_EMPTY,
+                    DeviceException.Type.BAD_REQUEST
+            );
+        }
+
+        // Recuperar los dispositivos desde la base de datos
+        List<Device> devices = deviceRepository.findAllById(deviceIds);
+
+        // Si el número de dispositivos recuperados es menor al esperado, identificar los IDs faltantes
+        if (devices.size() != deviceIds.size()) {
+            List<UUID> missingIds = deviceIds.stream()
+                    .filter(id -> devices.stream().noneMatch(device -> device.getId().equals(id)))
+                    .collect(Collectors.toList());
+            throw new DeviceException(
+                    String.format(MessageException.DEVICE_NOT_FOUND_BY_IDS, missingIds),
+                    DeviceException.Type.NOT_FOUND
+            );
+        }
+
+        // Actualizar el estado y la marca temporal de cada dispositivo
+        devices.forEach(device -> {
+            device.setStatus(state);
+            device.setUpdatedAt(LocalDateTime.now()); // Registrar fecha de actualización
+        });
+
+        try {
+            // Persistir los cambios en la base de datos
+            deviceRepository.saveAll(devices);
+        } catch (DataAccessException ex) {
+            log.error("Error al actualizar el estado de los dispositivos {}: {}", deviceIds, ex.getMessage());
+            throw new DeviceException(
+                    MessageException.DEVICE_ERROR_UPDATING_STATES,
+                    DeviceException.Type.INTERNAL_SERVER
+            );
+        }
+    }
 }

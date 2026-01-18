@@ -91,4 +91,13 @@ public interface DeviceService {
      */
     List<Map<String, Object>> getDevicesByIds(List<UUID> ids);
 
+    /**
+     * Actualiza los estados de una lista de dispositivos.
+     *
+     * @param deviceIds Lista de IDs de los dispositivos a actualizar.
+     * @param state El nuevo estado que se aplicará a los dispositivos.
+     * @throws DeviceNotFoundException Si alguno de los dispositivos no existe en la base de datos.
+     * @throws DeviceException Sí ocurre algún otro problema durante la actualización.
+     */
+    void updateDeviceStates(List<UUID> deviceIds, DeviceStatusEnum state);
 }

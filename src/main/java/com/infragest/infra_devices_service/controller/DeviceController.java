@@ -2,10 +2,9 @@ package com.infragest.infra_devices_service.controller;
 
 import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
-import com.infragest.infra_devices_service.model.CreateDeviceRq;
-import com.infragest.infra_devices_service.model.DeviceRs;
-import com.infragest.infra_devices_service.model.DevicesBatchRq;
+import com.infragest.infra_devices_service.model.*;
 import com.infragest.infra_devices_service.service.DeviceService;
+import com.infragest.infra_devices_service.util.ResponseFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,11 +16,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Controller REST para operaciones sobre dispositivos.
@@ -204,5 +201,31 @@ public class DeviceController {
     @PostMapping("/batch")
     public ResponseEntity<List<Map<String, Object>>> getDevicesByIds(@Valid @RequestBody DevicesBatchRq rq) {
         return ResponseEntity.ok(deviceService.getDevicesByIds(rq.getIds()));
+    }
+
+    /**
+     * Reserva varios dispositivos cambiando su estado.
+     *
+     * Este endpoint toma una lista de identificadores de dispositivos y un estado nuevo
+     * (por ejemplo, "OCCUPIED") para todos los dispositivos de la lista. El estado solo
+     * será actualizado si los dispositivos existen y están disponibles.
+     *
+     * @param request La solicitud que incluye la lista de IDs de los dispositivos y el nuevo estado a aplicar.
+     * @return Una lista de dispositivos con sus nuevos estados.
+     */
+    @Operation(summary = "Reservar o actualizar el estado de varios dispositivos")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Estados actualizados exitosamente", content = @Content(array = @ArraySchema(schema = @Schema(implementation = DeviceRs.class)))),
+            @ApiResponse(responseCode = "400", description = "Solicitud inválida (IDs faltantes o estado no válido)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Algún dispositivo no encontrado", content = @Content),
+            @ApiResponse(responseCode = "500", description = "Error interno en el servidor", content = @Content)
+    })
+    @PutMapping("/reserve")
+    public ResponseEntity<ApiResponseDto<Void>> reserveDevices(@Valid @RequestBody UpdateDevicesStateRq request) {
+
+        deviceService.updateDeviceStates(request.getDeviceIds(), request.getState());
+
+        // Crear la respuesta usando ResponseFactory
+        return ResponseEntity.ok(ResponseFactory.success("Estados actualizados exitosamente.", null));
     }
 }
