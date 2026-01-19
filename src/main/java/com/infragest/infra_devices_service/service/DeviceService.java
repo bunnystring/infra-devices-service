@@ -89,7 +89,7 @@ public interface DeviceService {
      * @param ids lista de UUID a recuperar; si es {@code null} o vacía devuelve lista vacía
      * @return lista de mapas con campos relevantes por device (id, barcode, brand, name, status, createdAt, updatedAt)
      */
-    List<Map<String, Object>> getDevicesByIds(List<UUID> ids);
+    List<DeviceRs> getDevicesByIds(List<UUID> ids);
 
     /**
      * Actualiza los estados de una lista de dispositivos.
