@@ -199,7 +199,7 @@ public class DeviceController {
             @ApiResponse(responseCode = "500", description = "Error interno")
     })
     @PostMapping("/batch")
-    public ResponseEntity<List<Map<String, Object>>> getDevicesByIds(@Valid @RequestBody DevicesBatchRq rq) {
+    public ResponseEntity<List<DeviceRs>> getDevicesByIds(@Valid @RequestBody DevicesBatchRq rq) {
         return ResponseEntity.ok(deviceService.getDevicesByIds(rq.getIds()));
     }
 

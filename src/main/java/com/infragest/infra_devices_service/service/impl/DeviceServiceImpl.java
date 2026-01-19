@@ -292,11 +292,11 @@ public class DeviceServiceImpl implements DeviceService {
      * @throws RuntimeException si ocurre un error de acceso a datos (envuelto)
      */
     @Override
-    public List<Map<String, Object>>getDevicesByIds(List<UUID> ids) {
+    public List<DeviceRs>getDevicesByIds(List<UUID> ids) {
         if (ids == null || ids.isEmpty()) return Collections.emptyList();
         try {
             List<Device> devices = deviceRepository.findAllById(ids);
-            return devices.stream().map(this::toMap).collect(Collectors.toList());
+            return devices.stream().map(this::buildDeviceRs).collect(Collectors.toList());
         } catch (DataAccessException dae) {
             log.error("Error reading devices by ids {}", ids, dae);
             throw new DeviceException(MessageException.DEVICE_NOT_FOUND_BY_ID, DeviceException.Type.INTERNAL_SERVER);
