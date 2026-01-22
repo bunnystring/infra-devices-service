@@ -5,6 +5,7 @@ import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.model.CreateDeviceRq;
 import com.infragest.infra_devices_service.model.DeviceRs;
 import com.infragest.infra_devices_service.model.RestoreDevicesRq;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -118,4 +119,13 @@ public interface DeviceService {
      * @return mapa con al menos {"success": Boolean} y opcional "message"
      */
     Map<String, Object> reserveDevices(List<UUID> ids, DeviceStatusEnum state);
+
+    /**
+     * Procesa un archivo de cargue y crea los dispositivos de forma masiva.
+     *
+     * @param file archivo Excel(.xls o xlsx) que contiene los datos para la carga masiva
+     * @return <void>
+     */
+    void uploadDevicesArchive(MultipartFile file);
+
 }
