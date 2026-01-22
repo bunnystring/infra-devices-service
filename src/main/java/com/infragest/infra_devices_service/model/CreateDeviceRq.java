@@ -4,6 +4,7 @@ import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.Builder;
 import lombok.Data;
 
 
@@ -16,6 +17,7 @@ import lombok.Data;
  * @version 1.1
  */
 @Data
+@Builder
 public class CreateDeviceRq {
 
     /**
