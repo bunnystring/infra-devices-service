@@ -12,5 +12,5 @@ public enum DeviceStatusEnum {
     GOOD_CONDITION, // En buen estado y disponible para uso.
     FAIR, // Estado aceptable, pero con desgaste leve.
     OCCUPIED, // Actualmente, en uso / asignado.
-    NEEDS_REPAIR // Requiere reparación.
+    NEEDS_REPAIR // RequDeviceStatusEnumiere reparación.
 }
