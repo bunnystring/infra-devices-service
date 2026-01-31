@@ -2,6 +2,7 @@ package com.infragest.infra_devices_service.service;
 
 import com.infragest.infra_devices_service.entity.DeviceAssignment;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
+import com.infragest.infra_devices_service.model.DeviceAssignmentDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -40,7 +41,7 @@ public interface DeviceAssignmentService {
      * @param deviceId Identificador único del dispositivo.
      * @return Lista de entidades {@link DeviceAssignment} que representan el historial de asignaciones para el dispositivo.
      */
-    List<DeviceAssignment> getDeviceAssignmentHistory(UUID deviceId);
+    List<DeviceAssignmentDto> getDeviceAssignmentHistory(UUID deviceId);
 
     /**
      * Verifica si un dispositivo tiene una asignación activa en este momento.

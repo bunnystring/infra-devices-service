@@ -4,6 +4,7 @@ import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.entity.DeviceAssignment;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.exception.DeviceException;
+import com.infragest.infra_devices_service.model.DeviceAssignmentDto;
 import com.infragest.infra_devices_service.repository.DeviceAssignmentRepository;
 import com.infragest.infra_devices_service.repository.DeviceRepository;
 import com.infragest.infra_devices_service.service.DeviceAssignmentService;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -124,10 +126,26 @@ public class DeviceAssignmentServiceImpl implements DeviceAssignmentService {
      * @return Lista de asignaciones históricas del dispositivo.
      */
     @Override
-    public List<DeviceAssignment> getDeviceAssignmentHistory(UUID deviceId) {
-        List<DeviceAssignment> history = deviceAssignmentRepository.findAllByDeviceIdAndReleasedAtIsNotNull(deviceId);
-        log.info("Se encontraron {} asignaciones históricas para el dispositivo {}", history.size(), deviceId);
-        return history;
+    public List<DeviceAssignmentDto> getDeviceAssignmentHistory(UUID deviceId) {
+
+        // Buscar asignaciones históricas
+        List<DeviceAssignment> assignments = deviceAssignmentRepository.findAllByDeviceIdAndReleasedAtIsNotNullOrderByReleasedAtDesc(deviceId);
+
+        // Registrar log con el tamaño de las asignaciones encontradas
+        log.info("Se encontraron {} asignaciones históricas para el dispositivo {}", assignments.size(), deviceId);
+
+        // Mapear cada asignación a un DTO y devolver la lista resultante
+        return assignments.stream()
+                .map(assignment -> DeviceAssignmentDto.builder()
+                        .deviceId(assignment.getDevice().getId())
+                        .deviceName(assignment.getDevice().getName())
+                        .orderId(assignment.getOrderId())
+                        .deviceStatus(assignment.getStatus())
+                        .assignedAt(assignment.getAssignedAt())
+                        .releasedAt(assignment.getReleasedAt())
+                        .build()
+                )
+                .collect(Collectors.toList()); // Colectar como lista
     }
 
     /**
