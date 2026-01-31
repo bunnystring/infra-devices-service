@@ -7,6 +7,7 @@ import com.infragest.infra_devices_service.model.CreateDeviceRq;
 import com.infragest.infra_devices_service.model.DeviceRs;
 import com.infragest.infra_devices_service.model.RestoreDevicesRq;
 import com.infragest.infra_devices_service.repository.DeviceRepository;
+import com.infragest.infra_devices_service.service.DeviceAssignmentService;
 import com.infragest.infra_devices_service.service.DeviceService;
 import com.infragest.infra_devices_service.util.MessageException;
 import jakarta.transaction.Transactional;
@@ -37,14 +38,21 @@ public class DeviceServiceImpl implements DeviceService {
     private final DeviceRepository deviceRepository;
 
     /**
+     * Inyección de dependencia: DeviceAssignmentService de dispositivos.
+     */
+    private final DeviceAssignmentService deviceAssignmentService;
+
+    /**
      * Constructor para la inyección de dependencias.
      *
      * @param deviceRepository
+     * @param deviceAssignmentService
      */
     public DeviceServiceImpl(
-            DeviceRepository deviceRepository)
+            DeviceRepository deviceRepository, DeviceAssignmentService deviceAssignmentService)
     {
         this.deviceRepository = deviceRepository;
+        this.deviceAssignmentService = deviceAssignmentService;
     }
 
     /**
@@ -304,37 +312,6 @@ public class DeviceServiceImpl implements DeviceService {
     }
 
     /**
-     * Reserva/actualiza el estado de los devices indicados.
-     *
-     * @param ids lista de UUIDs
-     * @param state estado objetivo como {@link DeviceStatusEnum}
-     * @return mapa con la respuesta de la operación
-     */
-    @Override
-    @Transactional
-    public Map<String, Object> reserveDevices(List<UUID> ids, DeviceStatusEnum state) {
-        if (ids == null || ids.isEmpty()) {
-            return Map.of("success", false, "message", "deviceIds empty");
-        }
-
-        try {
-            List<Device> found = deviceRepository.findAllById(ids);
-            Set<UUID> foundIds = found.stream().map(Device::getId).collect(Collectors.toSet());
-            List<UUID> missing = ids.stream().filter(id -> !foundIds.contains(id)).collect(Collectors.toList());
-            if (!missing.isEmpty()) {
-                return Map.of("success", false, "message", "Devices not found: " + missing);
-            }
-
-            found.forEach(d -> d.setStatus(state));
-            deviceRepository.saveAll(found);
-            return Map.of("success", true);
-        } catch (DataAccessException dae) {
-            log.error("Error reservando devices {} -> {}", ids, dae.getMessage(), dae);
-            return Map.of("success", false, "message", "DB error");
-        }
-    }
-
-    /**
      * Restaura los estados originales de una lista de devices.
      *
      * @param items lista de {@link RestoreDevicesRq.RestoreItem}
@@ -348,39 +325,59 @@ public class DeviceServiceImpl implements DeviceService {
         }
 
         try {
-            // extraer ids y mapear estado a aplicar por id
+            // Extraer IDs y mapear estados por ID
             List<UUID> ids = items.stream()
                     .map(RestoreDevicesRq.RestoreItem::getDeviceId)
                     .collect(Collectors.toList());
 
-            List<Device> found = deviceRepository.findAllById(ids);
-            Set<UUID> foundIds = found.stream().map(Device::getId).collect(Collectors.toSet());
-            List<UUID> missing = ids.stream().filter(id -> !foundIds.contains(id)).collect(Collectors.toList());
-            if (!missing.isEmpty()) {
-                return Map.of("success", false, "message", "Devices not found: " + missing);
+            // Buscar dispositivos en la base de datos
+            List<Device> foundDevices = deviceRepository.findAllById(ids);
+            Set<UUID> foundIds = foundDevices.stream().map(Device::getId).collect(Collectors.toSet());
+            List<UUID> missingIds = ids.stream().filter(id -> !foundIds.contains(id)).collect(Collectors.toList());
+            if (!missingIds.isEmpty()) {
+                return Map.of("success", false, "message", String.format("Devices not found: %s", missingIds));
             }
 
-            // Aplicar los estados provistos (ya como DeviceStatusEnum)
-            Map<UUID, DeviceStatusEnum> idToState = new HashMap<>();
-            for (RestoreDevicesRq.RestoreItem it : items) {
-                idToState.put(it.getDeviceId(), it.getState());
-            }
+            // Crear un mapeo entre IDs y sus estados objetivo
+            Map<UUID, DeviceStatusEnum> idToState = items.stream()
+                    .collect(Collectors.toMap(RestoreDevicesRq.RestoreItem::getDeviceId, RestoreDevicesRq.RestoreItem::getState));
 
-            for (Device d : found) {
-                DeviceStatusEnum target = idToState.get(d.getId());
-                if (target == null) {
-                    return Map.of("success", false, "message", "Missing state for device " + d.getId());
+            for (Device device : foundDevices) {
+                UUID deviceId = device.getId();
+                DeviceStatusEnum targetState = idToState.get(deviceId);
+
+                // Verificar si falta el estado objetivo
+                if (targetState == null) {
+                    return Map.of("success", false, "message", String.format("Missing state for device %s", deviceId));
                 }
-                d.setStatus(target);
+
+                // Si el estado objetivo es GOOD_CONDITION, liberar asignaciones activas
+                if (targetState != DeviceStatusEnum.OCCUPIED) {
+                    try {
+                        deviceAssignmentService.releaseDeviceFromOrder(deviceId, targetState);
+                    } catch (DeviceException e) {
+                        log.warn("Failed to release assignment for device {}: {}", deviceId, e.getMessage());
+                        throw e; // Escalar la excepción para manejarlo adecuadamente
+                    }
+                }
+
+                // Aplicar el nuevo estado (si es diferente del existente)
+                if (!device.getStatus().equals(targetState)) {
+                    device.setStatus(targetState);
+                    log.info("Device {} status updated to {}", deviceId, targetState);
+                }
             }
 
-            deviceRepository.saveAll(found);
-            return Map.of("success", true);
+            // Guardar actualizaciones en la base de datos
+            deviceRepository.saveAll(foundDevices);
+            log.info("Successfully restored states for devices: {}", ids);
+            return Map.of("success", true, "message", "Device states restored successfully");
+
         } catch (DataAccessException dae) {
-            log.error("Error restaurando devices {}", dae.getMessage(), dae);
-            return Map.of("success", false, "message", "DB error");
+            log.error("Database error while restoring device states: {}", dae.getMessage(), dae);
+            return Map.of("success", false, "message", "Database error");
         } catch (Exception ex) {
-            log.error("Error procesando restore items {}", ex.getMessage(), ex);
+            log.error("Error processing device state restoration: {}", ex.getMessage(), ex);
             return Map.of("success", false, "message", "Invalid request payload");
         }
     }
@@ -404,15 +401,17 @@ public class DeviceServiceImpl implements DeviceService {
     }
 
     /**
-     * Actualiza los estados de una lista de dispositivos.
+     * Actualiza los estados de una lista de dispositivos y les asocia la orden.
      *
      * @param deviceIds Lista de IDs de los dispositivos a actualizar.
      * @param state El nuevo estado que será aplicado a cada dispositivo.
+     * @param orderId El identificador de la orden.
      * @throws DeviceException Si alguno de los dispositivos no existe o si ocurre un error al actualizar.
      */
     @Override
     @Transactional
-    public void updateDeviceStates(List<UUID> deviceIds, DeviceStatusEnum state) {
+    public void reserveDevices(List<UUID> deviceIds, DeviceStatusEnum state, UUID orderId) {
+
         // Verificar que la lista de IDs no sea vacía o nula
         if (deviceIds == null || deviceIds.isEmpty()) {
             throw new DeviceException(
@@ -421,8 +420,80 @@ public class DeviceServiceImpl implements DeviceService {
             );
         }
 
-        // Recuperar los dispositivos desde la base de datos
-        List<Device> devices = deviceRepository.findAllById(deviceIds);
+        // Validar que el order id venga y no sea null
+        if (orderId == null || orderId.toString().trim().isEmpty()) {
+            throw new DeviceException(
+                    MessageException.ORDER_ID_CANNOT_BE_NULL_OR_EMPTY,
+                    DeviceException.Type.BAD_REQUEST
+            );
+        }
+
+        // Recuperar los dispositivos desde la base de datos haciendo un bloqueo pesimista a los registros.
+        List<Device> devices = deviceRepository.findAllByIdIn(deviceIds);
+
+        // Si el número de dispositivos recuperados es menor al esperado, identificar los IDs faltantes
+        if (devices.size() != deviceIds.size()) {
+            List<UUID> missingIds = deviceIds.stream()
+                    .filter(id -> devices.stream().noneMatch(device -> device.getId().equals(id)))
+                    .collect(Collectors.toList());
+            throw new DeviceException(
+                    String.format(MessageException.DEVICE_NOT_FOUND_BY_IDS, missingIds),
+                    DeviceException.Type.NOT_FOUND
+            );
+        }
+
+        // Procesar los dispositivos y actualizar sus estados
+        devices.forEach(device -> {
+
+            // Si el estado es OCCUPIED, delegar la creación de la asignación al servicio de asignaciones
+            if (state.equals(DeviceStatusEnum.OCCUPIED)) {
+                deviceAssignmentService.assignDeviceToOrder(orderId, device.getId());
+            }
+
+            // Actualizar el estado y la marca temporal de cada dispositivo
+            device.setStatus(state);
+            device.setUpdatedAt(LocalDateTime.now()); // Registrar fecha de actualización
+        });
+
+        // Actualizar el estado y la marca temporal de cada dispositivo
+        devices.forEach(device -> {
+            device.setStatus(state);
+            device.setUpdatedAt(LocalDateTime.now()); // Registrar fecha de actualización
+        });
+
+        try {
+            // Persistir los cambios en la base de datos
+            deviceRepository.saveAll(devices);
+        } catch (DataAccessException ex) {
+            log.error("Error al actualizar el estado de los dispositivos {}: {}", deviceIds, ex.getMessage());
+            throw new DeviceException(
+                    MessageException.DEVICE_ERROR_UPDATING_STATES,
+                    DeviceException.Type.INTERNAL_SERVER
+            );
+        }
+    }
+
+    /**
+     * Actualiza los estados de una lista de dispositivos.
+     *
+     * @param deviceIds Lista de IDs de los dispositivos a actualizar.
+     * @param state El nuevo estado que será aplicado a cada dispositivo.
+     * @throws DeviceException Si alguno de los dispositivos no existe o si ocurre un error al actualizar.
+     */
+    @Override
+    @Transactional
+    public void updateDevicesBatch(List<UUID> deviceIds, DeviceStatusEnum state) {
+
+        // Verificar que la lista de IDs no sea vacía o nula
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            throw new DeviceException(
+                    MessageException.DEVICE_IDS_CANNOT_BE_EMPTY,
+                    DeviceException.Type.BAD_REQUEST
+            );
+        }
+
+        // Recuperar los dispositivos desde la base de datos haciendo un bloqueo pesimista a los registros.
+        List<Device> devices = deviceRepository.findAllByIdIn(deviceIds);
 
         // Si el número de dispositivos recuperados es menor al esperado, identificar los IDs faltantes
         if (devices.size() != deviceIds.size()) {

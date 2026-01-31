@@ -223,7 +223,7 @@ public class DeviceController {
     @PutMapping("/reserve")
     public ResponseEntity<ApiResponseDto<Void>> reserveDevices(@Valid @RequestBody UpdateDevicesStateRq request) {
 
-        deviceService.updateDeviceStates(request.getDeviceIds(), request.getState());
+        deviceService.reserveDevices(request.getDeviceIds(), request.getState(), request.getOrderId());
 
         // Crear la respuesta usando ResponseFactory
         return ResponseEntity.ok(ResponseFactory.success("Estados actualizados exitosamente.", null));
@@ -245,6 +245,32 @@ public class DeviceController {
         // Delegamos el listado tipado de RestoreItem directamente al servicio
         Map<String, Object> resp = deviceService.restoreDeviceStates(rq.getItems());
         return ResponseEntity.ok(resp);
+    }
+
+    /**
+     * Actualiza varios dispositivos cambiando su estado.
+     *
+     * Este endpoint toma una lista de identificadores de dispositivos y un estado nuevo
+     * (por ejemplo, "OCCUPIED") para todos los dispositivos de la lista. El estado solo
+     * será actualizado si los dispositivos existen y están disponibles.
+     *
+     * @param request La solicitud que incluye la lista de IDs de los dispositivos y el nuevo estado a aplicar.
+     * @return Una lista de dispositivos con sus nuevos estados.
+     */
+    @Operation(summary = "Reservar o actualizar el estado de varios dispositivos")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Estados actualizados exitosamente", content = @Content(array = @ArraySchema(schema = @Schema(implementation = DeviceRs.class)))),
+            @ApiResponse(responseCode = "400", description = "Solicitud inválida (IDs faltantes o estado no válido)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Algún dispositivo no encontrado", content = @Content),
+            @ApiResponse(responseCode = "500", description = "Error interno en el servidor", content = @Content)
+    })
+    @PutMapping("/update-batch")
+    public ResponseEntity<ApiResponseDto<Void>> updateDevicesBatch(@Valid @RequestBody UpdateDevicesStateRq request) {
+
+        deviceService.updateDevicesBatch(request.getDeviceIds(), request.getState());
+
+        // Crear la respuesta usando ResponseFactory
+        return ResponseEntity.ok(ResponseFactory.success("Estados actualizados exitosamente.", null));
     }
 
 }
