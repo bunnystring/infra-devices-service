@@ -12,11 +12,20 @@ import com.infragest.infra_devices_service.service.DeviceService;
 import com.infragest.infra_devices_service.util.MessageException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -83,11 +92,12 @@ public class DeviceServiceImpl implements DeviceService {
         }
 
         // Construcción de la entidad Device a partir del DTO. Se hace trim de los campos de texto para normalizar la entrada.
-        Device deviceEntity = new Device();
-        deviceEntity.setName(request.getName() != null ? request.getName().trim() : null);
-        deviceEntity.setBrand(request.getBrand() != null ? request.getBrand().trim() : null);
-        deviceEntity.setBarcode(request.getBarcode() != null ? request.getBarcode().trim() : null);
-        deviceEntity.setStatus(request.getStatus());
+        Device deviceEntity = Device.builder()
+                .name(request.getName() != null ? request.getName().trim() : null)
+                .brand(request.getBrand() != null ? request.getBrand().trim() : null)
+                .barcode(request.getBarcode() != null ? request.getBarcode().trim() : null)
+                .status(request.getStatus())
+                .build();
 
         try {
 
@@ -522,5 +532,168 @@ public class DeviceServiceImpl implements DeviceService {
                     DeviceException.Type.INTERNAL_SERVER
             );
         }
+    }
+
+    /**
+     * Procesa un archivo de cargue y crea los dispositivos de forma masiva.
+     *
+     * @param file archivo Excel(.xls o xlsx) que contiene los datos para la carga masiva
+     * @return <void>
+     */
+    @Transactional
+    @Override
+    public void uploadDevicesArchive(MultipartFile file) {
+
+        // Validar que el archivo no esté vacío
+        if (file.isEmpty()) {
+            throw new DeviceException("El archivo está vacío. Carga un archivo válido.", DeviceException.Type.BAD_REQUEST);
+        }
+
+        List<CreateDeviceRq> requestDevices = new ArrayList<>();
+
+        try (
+                Workbook workbook = new XSSFWorkbook(file.getInputStream())
+        ) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            // Validar que hay filas de datos
+            if (sheet.getPhysicalNumberOfRows() <= 1) {
+                throw new DeviceException("El archivo no contiene datos validos.",
+                        DeviceException.Type.BAD_REQUEST);
+            }
+
+            //Cargar dispositivos del archivo
+            for (int i = 1; i < sheet.getPhysicalNumberOfRows(); i++) {
+                Row row = sheet.getRow(i);
+
+                if (row != null) {
+                    try {
+                        // Convertir el formato del dispositivo a un objeto CreateDeviceRq
+                        CreateDeviceRq request = parseRowToCreateDeviceRq(row);
+
+                        // validar la existencia en la base de datos por barcode
+                        String barcode = request.getBarcode().trim().toUpperCase();
+                        if (deviceRepository.findByBarcode(barcode).isPresent()) {
+                            throw new DeviceException(MessageException.DEVICE_ALREADY_EXISTS + request.getBarcode(),
+                                    DeviceException.Type.BAD_REQUEST);
+                        }
+
+                        requestDevices.add(request);
+
+                    } catch (DeviceException e) {
+                      throw new DeviceException("Error en la fila " + (i + 1) + ": " + e.getMessage(),
+                              DeviceException.Type.BAD_REQUEST);
+                    }
+                }
+            }
+
+            // Validar duplicados en el archivo antes de guardar y borrarlos(barcode)
+            removeDuplicatesWithStream(requestDevices);
+
+            // Convertir los dto a Entity y guardar
+            List<Device> devices = requestDevices.stream()
+                    .map(this::mapToDeviceEntity)
+                    .collect(Collectors.toList());
+
+            deviceRepository.saveAll(devices);
+        } catch (IOException e) {
+            throw new DeviceException(
+                    "Ocurrió un error al leer el archivo Excel. Verifique si el archivo es valido.",
+                    DeviceException.Type.INTERNAL_SERVER
+            );
+        }
+    }
+
+    /**
+     * Convierte una fila del archivo Excel en un objeto CreateDeviceRq.
+     *
+     * @param row fila procesada del archivo Excel
+     * @return un objeto CreateDeviceRq
+     * @throws DeviceException si alguna columna tiene datos inválidos
+     */
+    private CreateDeviceRq parseRowToCreateDeviceRq(Row row){
+
+        String name = getStringCellValue(row.getCell(0));
+        String brand = getStringCellValue(row.getCell(1));
+        String barcode = getStringCellValue(row.getCell(2));
+        String state = getStringCellValue(row.getCell(3));
+
+        if (state == null || state.isBlank()) {
+            throw new DeviceException("El estado del dispositivo no puede estar vacío",
+                    DeviceException.Type.BAD_REQUEST);
+        }
+
+         DeviceStatusEnum status;
+
+        try {
+            status = DeviceStatusEnum.valueOf(state.toUpperCase());
+        } catch ( DeviceException e) {
+            throw new DeviceException("El estado del dispositivo '" + state + "' no es valido.",
+                    DeviceException.Type.BAD_REQUEST);
+        }
+
+        // Crear y retornar el objeto CreateDeviceRq
+        return CreateDeviceRq.builder()
+                .name(name)
+                .brand(brand)
+                .barcode(barcode)
+                .status(status)
+                .build();
+    }
+
+    /**
+     * Obtiene el valor de una celda como String.
+     *
+     * @param cell celda a procesar
+     * @return Valor como String o {@code null} si la celda está vacía
+     */
+    private String getStringCellValue(Cell cell) {
+        if (cell == null) return null;
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue().trim(); // Eliminar espacios en los datos tipo texto
+            case NUMERIC ->
+                    String.valueOf((long) cell.getNumericCellValue()); // Convertir números a String (sin decimales)
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue()); // Manejar datos booleanos
+            default -> null; // Otros tipos, como FORMULA, no se manejan explícitamente
+        };
+    }
+
+    /**
+     * Elimina duplicados en la lista basada en el código de barras (barcode).
+     *
+     * @param devices Lista de dispositivos cargados.
+     * @return Lista nueva sin duplicados.
+     */
+    private List<CreateDeviceRq> removeDuplicatesWithStream(List<CreateDeviceRq> devices) {
+        return devices.stream()
+                .filter(distinctByKey(CreateDeviceRq::getBarcode)) // Filtrado por barcode único
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Función auxiliar para filtrar elementos únicos por una clave.
+     *
+     * @param keyExtractor Función para obtener la clave (en este caso, el barcode).
+     * @param <T> Tipo de los elementos en el stream.
+     * @return Predicate para filtrar únicos por clave.
+     */
+    private static <T> Predicate<T> distinctByKey(Function<? super T, Object> keyExtractor) {
+        Set<Object> seenKeys = new HashSet<>();
+        return t -> seenKeys.add(keyExtractor.apply(t));
+    }
+
+    /**
+     * Convierte un objeto CreateDeviceRq en una entidad Device.
+     *
+     * @param request el DTO CreateDeviceRq
+     * @return una entidad Device
+     */
+    private Device mapToDeviceEntity(CreateDeviceRq request) {
+        return Device.builder()
+                .name(request.getName())
+                .brand(request.getBrand())
+                .barcode(request.getBarcode())
+                .status(request.getStatus())
+                .build();
     }
 }

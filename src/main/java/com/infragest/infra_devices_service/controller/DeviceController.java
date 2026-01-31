@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -273,4 +274,24 @@ public class DeviceController {
         return ResponseEntity.ok(ResponseFactory.success("Estados actualizados exitosamente.", null));
     }
 
+    /**
+     * Procesa un archivo Excel y crea dispositivos de forma masiva.
+     *
+     * @param file archivo Excel (.xlsx o .xls) que contiene los dispositivos a cargar.
+     * @return Un {@link ResponseEntity} con {@link ApiResponseDto<Void>} indicando el éxito de la operación.
+     * @throws DeviceException si se detecta un error durante la validación o al procesar el archivo.
+     */
+    @Operation(summary = "Carga masiva de dispositivos desde un archivo Excel")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Dispositivos cargados exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Error en el archivo o solicitud inválida"),
+            @ApiResponse(responseCode = "500", description = "Error interno en el servidor")
+    })
+    @PostMapping("/batch/upload")
+    public ResponseEntity<ApiResponseDto<Void>> uploadDevicesArchive(@RequestParam("file")MultipartFile file) {
+
+        deviceService.uploadDevicesArchive(file);
+
+        return ResponseEntity.ok(ResponseFactory.success("Dispositvos cargados exitosamente", null));
+    }
 }

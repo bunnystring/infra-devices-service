@@ -2,8 +2,7 @@ package com.infragest.infra_devices_service.entity;
 
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 /**
  * Entidad JPA que representa un dispositivo.
@@ -17,6 +16,9 @@ import lombok.Setter;
 @Setter
 @Getter
 @Entity
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "devices")
 public class Device extends BaseEntity{
 
