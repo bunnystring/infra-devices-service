@@ -43,5 +43,5 @@ public interface DeviceAssignmentRepository extends JpaRepository<DeviceAssignme
      * @param deviceId ID del dispositivo a consultar.
      * @return Lista de entidades {@link DeviceAssignment} con asignaciones ya liberadas.
      */
-    List<DeviceAssignment> findAllByDeviceIdAndReleasedAtIsNotNull(UUID deviceId);
+    List<DeviceAssignment> findAllByDeviceIdAndReleasedAtIsNotNullOrderByReleasedAtDesc(UUID deviceId);
 }
