@@ -26,4 +26,9 @@ public class UpdateDevicesStateRq {
      */
     @NotNull(message = "Debe especificarse un nuevo estado para los dispositivos.")
     private DeviceStatusEnum state;
+
+    /**
+     * Identificador de la orden.
+     */
+    private UUID orderId;
 }
