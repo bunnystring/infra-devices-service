@@ -1,5 +1,6 @@
 package com.infragest.infra_devices_service.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
