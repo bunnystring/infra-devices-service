@@ -97,10 +97,11 @@ public interface DeviceService {
      *
      * @param deviceIds Lista de IDs de los dispositivos a actualizar.
      * @param state     El nuevo estado que se aplicará a los dispositivos.
+     * @param orderId     El identificador de la orden.
      * @throws DeviceNotFoundException Si alguno de los dispositivos no existe en la base de datos.
      * @throws DeviceException         Sí ocurre algún otro problema durante la actualización.
      */
-    void updateDeviceStates(List<UUID> deviceIds, DeviceStatusEnum state);
+    void reserveDevices(List<UUID> deviceIds, DeviceStatusEnum state, UUID orderId);
 
     /**
      * Restaura estados originales de devices.
@@ -110,15 +111,16 @@ public interface DeviceService {
      */
     Map<String, Object> restoreDeviceStates(List<RestoreDevicesRq.RestoreItem> items);
 
+
     /**
-     * Reserva/actualiza el estado de los devices indicados.
-     * *
+     * Actualiza los estados de una lista de dispositivos.
      *
-     * @param ids   lista de UUID de devices a actualizar
-     * @param state estado objetivo como {@link DeviceStatusEnum}
-     * @return mapa con al menos {"success": Boolean} y opcional "message"
+     * @param deviceIds Lista de IDs de los dispositivos a actualizar.
+     * @param state     El nuevo estado que se aplicará a los dispositivos.
+     * @throws DeviceNotFoundException Si alguno de los dispositivos no existe en la base de datos.
+     * @throws DeviceException         Sí ocurre algún otro problema durante la actualización.
      */
-    Map<String, Object> reserveDevices(List<UUID> ids, DeviceStatusEnum state);
+    void updateDevicesBatch(List<UUID> deviceIds, DeviceStatusEnum state);
 
     /**
      * Procesa un archivo de cargue y crea los dispositivos de forma masiva.

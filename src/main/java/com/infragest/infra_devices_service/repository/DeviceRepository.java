@@ -2,7 +2,9 @@ package com.infragest.infra_devices_service.repository;
 
 import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -43,4 +45,14 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
      * @return lista de {@link Device} que cumplen con alguno de los estados (puede ser vacía)
      */
     List<Device> findAllByStatusIn(List<DeviceStatusEnum> statuses);
+
+    /**
+     * Recupera una lista de dispositivos por sus IDs con un bloqueo pesimista.
+     * Esto asegura que las filas seleccionadas no puedan ser modificadas por otras transacciones concurrentes.
+     *
+     * @param ids Lista de IDs de dispositivos a recuperar.
+     * @return Lista de dispositivos encontrados.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE) // Bloqueo pesimista
+    List<Device> findAllByIdIn(List<UUID> ids);
 }

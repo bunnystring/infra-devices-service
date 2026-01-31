@@ -224,7 +224,7 @@ public class DeviceController {
     @PutMapping("/reserve")
     public ResponseEntity<ApiResponseDto<Void>> reserveDevices(@Valid @RequestBody UpdateDevicesStateRq request) {
 
-        deviceService.updateDeviceStates(request.getDeviceIds(), request.getState());
+        deviceService.reserveDevices(request.getDeviceIds(), request.getState(), request.getOrderId());
 
         // Crear la respuesta usando ResponseFactory
         return ResponseEntity.ok(ResponseFactory.success("Estados actualizados exitosamente.", null));
@@ -249,13 +249,33 @@ public class DeviceController {
     }
 
     /**
-     * Procesa un archivo Excel y crea dispositivos de forma masiva.
-     * <p>
-     * Este endpoint permite cargar dispositivos de manera masiva al sistema a partir de un archivo Excel
-     * (.xlsx o .xls). Verifica que los dispositivos no tengan códigos de barras duplicados y valida las
-     * restricciones de cada dispositivo antes de crearlos en la base de datos.
-     * </p>
+     * Actualiza varios dispositivos cambiando su estado.
      *
+     * Este endpoint toma una lista de identificadores de dispositivos y un estado nuevo
+     * (por ejemplo, "OCCUPIED") para todos los dispositivos de la lista. El estado solo
+     * será actualizado si los dispositivos existen y están disponibles.
+     *
+     * @param request La solicitud que incluye la lista de IDs de los dispositivos y el nuevo estado a aplicar.
+     * @return Una lista de dispositivos con sus nuevos estados.
+     */
+    @Operation(summary = "Reservar o actualizar el estado de varios dispositivos")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Estados actualizados exitosamente", content = @Content(array = @ArraySchema(schema = @Schema(implementation = DeviceRs.class)))),
+            @ApiResponse(responseCode = "400", description = "Solicitud inválida (IDs faltantes o estado no válido)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Algún dispositivo no encontrado", content = @Content),
+            @ApiResponse(responseCode = "500", description = "Error interno en el servidor", content = @Content)
+    })
+    @PutMapping("/update-batch")
+    public ResponseEntity<ApiResponseDto<Void>> updateDevicesBatch(@Valid @RequestBody UpdateDevicesStateRq request) {
+
+        deviceService.updateDevicesBatch(request.getDeviceIds(), request.getState());
+
+        // Crear la respuesta usando ResponseFactory
+        return ResponseEntity.ok(ResponseFactory.success("Estados actualizados exitosamente.", null));
+    }
+
+    /**
+     * Procesa un archivo Excel y crea dispositivos de forma masiva.
      *
      * @param file archivo Excel (.xlsx o .xls) que contiene los dispositivos a cargar.
      * @return Un {@link ResponseEntity} con {@link ApiResponseDto<Void>} indicando el éxito de la operación.
@@ -269,7 +289,9 @@ public class DeviceController {
     })
     @PostMapping("/batch/upload")
     public ResponseEntity<ApiResponseDto<Void>> uploadDevicesArchive(@RequestParam("file")MultipartFile file) {
+
         deviceService.uploadDevicesArchive(file);
+
         return ResponseEntity.ok(ResponseFactory.success("Dispositvos cargados exitosamente", null));
     }
 }

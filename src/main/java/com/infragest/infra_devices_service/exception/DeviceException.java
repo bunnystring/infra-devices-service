@@ -17,7 +17,8 @@ public class DeviceException extends RuntimeException {
     public enum Type {
         NOT_FOUND,
         BAD_REQUEST,
-        INTERNAL_SERVER
+        INTERNAL_SERVER,
+        CONFLICT
     }
 
     /**
