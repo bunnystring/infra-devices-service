@@ -4,7 +4,9 @@ import com.infragest.infra_devices_service.entity.Device;
 import com.infragest.infra_devices_service.entity.DeviceAssignment;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
 import com.infragest.infra_devices_service.exception.DeviceException;
+import com.infragest.infra_devices_service.model.DeviceAssignmentActiveRs;
 import com.infragest.infra_devices_service.model.DeviceAssignmentDto;
+import com.infragest.infra_devices_service.model.DevicesBatchRq;
 import com.infragest.infra_devices_service.repository.DeviceAssignmentRepository;
 import com.infragest.infra_devices_service.repository.DeviceRepository;
 import com.infragest.infra_devices_service.service.DeviceAssignmentService;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -149,15 +152,30 @@ public class DeviceAssignmentServiceImpl implements DeviceAssignmentService {
     }
 
     /**
-     * Verifica si un dispositivo tiene una asignación activa (releasedAt es null).
-     *
-     * @param deviceId Identificador único del dispositivo.
-     * @return {@code true} si el dispositivo tiene una asignación activa, {@code false} en caso contrario.
+     * Verifica el estado de asignación activa para un conjunto de dispositivos.
+     * @param devicesBatchRq objeto que contiene la lista de identificadores únicos de los dispositivos a consultar.
+     * @return lista de objetos {@link DeviceAssignmentActiveRs}, cada uno correspondiente a un dispositivo consultado,
+     *         con el campo {@code active} en {@code true} si existe una asignación activa o {@code false} en caso contrario.
      */
     @Override
-    public boolean hasActiveAssignment(UUID deviceId) {
-        boolean hasActive = deviceAssignmentRepository.findByDeviceIdAndReleasedAtIsNull(deviceId).isPresent();
-        log.info("El dispositivo {} {} una asignación activa.", deviceId, hasActive ? "tiene" : "no tiene");
-        return hasActive;
+    public List<DeviceAssignmentActiveRs> hasActiveAssignment(DevicesBatchRq devicesBatchRq) {
+
+        // Obtiene todos los ids
+        List<UUID> ids = devicesBatchRq.getIds();
+
+        // Consulta si los ids tienen una asignación activa (releasedAt es null)
+        List<DeviceAssignment> activos = deviceAssignmentRepository
+                .findAllByDeviceIdInAndReleasedAtIsNull(ids);
+
+        // Construye el resultado para cada deviceId solicitado
+        List<DeviceAssignmentActiveRs> result = ids.stream()
+                .map(id -> DeviceAssignmentActiveRs.builder()
+                        .deviceId(id)
+                        .active(activos.stream()
+                                .anyMatch(da -> da.getDevice().getId().equals(id)))
+                        .build())
+                .collect(Collectors.toList());
+
+        return result;
     }
 }

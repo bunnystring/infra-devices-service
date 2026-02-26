@@ -1,19 +1,20 @@
 package com.infragest.infra_devices_service.controller;
 
 import com.infragest.infra_devices_service.entity.DeviceAssignment;
+import com.infragest.infra_devices_service.model.DeviceAssignmentActiveRs;
 import com.infragest.infra_devices_service.model.DeviceAssignmentDto;
+import com.infragest.infra_devices_service.model.DevicesBatchRq;
 import com.infragest.infra_devices_service.service.DeviceAssignmentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -47,23 +48,37 @@ public class DeviceAssignmentController {
     }
 
     /**
-     * Verifica si un dispositivo tiene una asignación activa.
+     * Verifica si los dispositivos especificados tienen una asignación activa.
      *
-     * @param deviceId UUID del dispositivo.
-     * @return {@code true} si tiene una asignación activa, {@code false} en caso contrario.
+     * @param devicesBatchRq Objeto que contiene una lista de UUIDs de dispositivos a consultar.
+     * @return {@link ResponseEntity} con una lista de objetos {@link DeviceAssignmentActiveRs},
+     *         cada uno indicando el deviceId consultado y si tiene una asignación activa.
      */
-    @Operation(summary = "Verifica si un dispositivo tiene una asignación activa",
-            description = "Devuelve `true` si el dispositivo tiene una asignación activa (releasedAt es null), `false` en caso contrario.")
+    @Operation(
+            summary = "Verifica si varios dispositivos tienen asignación activa",
+            description = "Recibe una lista de UUIDs de dispositivos y devuelve un array de objetos con el estado de asignación activa (`active=true`) o inactiva (`active=false`). Si un dispositivo no existe, se devuelve igual con `active=false`."
+    )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Respuesta exitosa: el dispositivo tiene/no tiene una asignación activa."),
-            @ApiResponse(responseCode = "404", description = "El dispositivo con el ID proporcionado no existe.",
-                    content = @Content(schema = @Schema(hidden = true))),
-            @ApiResponse(responseCode = "500", description = "Error interno del servidor.",
-                    content = @Content(schema = @Schema(hidden = true)))
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Respuesta exitosa: array indicando para cada dispositivo si tiene asignación activa.",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = DeviceAssignmentActiveRs.class)))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Solicitud inválida (por ejemplo, lista vacía o mal formada).",
+                    content = @Content(schema = @Schema(hidden = true))
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor.",
+                    content = @Content(schema = @Schema(hidden = true))
+            )
     })
-    @GetMapping("/{deviceId}/active")
-    public ResponseEntity<Boolean> hasActiveAssignment(@PathVariable UUID deviceId) {
-        return ResponseEntity.ok(deviceAssignmentService.hasActiveAssignment(deviceId));
+    @PostMapping("/devices/active")
+    public ResponseEntity<List<DeviceAssignmentActiveRs>> hasActiveAssignment(
+            @RequestBody @Valid DevicesBatchRq devicesBatchRq) {
+        return ResponseEntity.ok(deviceAssignmentService.hasActiveAssignment(devicesBatchRq));
     }
 
     /**
