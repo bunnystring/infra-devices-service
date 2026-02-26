@@ -44,4 +44,12 @@ public interface DeviceAssignmentRepository extends JpaRepository<DeviceAssignme
      * @return Lista de entidades {@link DeviceAssignment} con asignaciones.
      */
     List<DeviceAssignment> findAllByDeviceIdOrderByAssignedAtDesc(UUID deviceId);
+
+    /**
+     * Obtiene todas las asignaciones activas (con released_at IS NULL) para una lista de dispositivos.
+     *
+     * @param deviceIds Lista de IDs de los dispositivos a consultar.
+     * @return Lista de entidades {@link DeviceAssignment} que tienen una asignación activa para los IDs especificados.
+     */
+    List<DeviceAssignment> findAllByDeviceIdInAndReleasedAtIsNull(List<UUID> deviceIds);
 }
