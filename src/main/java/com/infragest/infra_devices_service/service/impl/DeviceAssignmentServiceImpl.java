@@ -129,7 +129,7 @@ public class DeviceAssignmentServiceImpl implements DeviceAssignmentService {
     public List<DeviceAssignmentDto> getDeviceAssignmentHistory(UUID deviceId) {
 
         // Buscar asignaciones históricas
-        List<DeviceAssignment> assignments = deviceAssignmentRepository.findAllByDeviceIdAndReleasedAtIsNotNullOrderByReleasedAtDesc(deviceId);
+        List<DeviceAssignment> assignments = deviceAssignmentRepository.findAllByDeviceIdOrderByAssignedAtDesc(deviceId);
 
         // Registrar log con el tamaño de las asignaciones encontradas
         log.info("Se encontraron {} asignaciones históricas para el dispositivo {}", assignments.size(), deviceId);
