@@ -38,10 +38,10 @@ public interface DeviceAssignmentRepository extends JpaRepository<DeviceAssignme
     Optional<DeviceAssignment> findWithLockByDeviceIdAndReleasedAtIsNull(UUID deviceId);
 
     /**
-     * Obtiene todas las asignaciones históricas (released_at IS NOT NULL) de un dispositivo.
+     * Obtiene todas las asignaciones históricas de un dispositivo.
      *
      * @param deviceId ID del dispositivo a consultar.
-     * @return Lista de entidades {@link DeviceAssignment} con asignaciones ya liberadas.
+     * @return Lista de entidades {@link DeviceAssignment} con asignaciones.
      */
-    List<DeviceAssignment> findAllByDeviceIdAndReleasedAtIsNotNullOrderByReleasedAtDesc(UUID deviceId);
+    List<DeviceAssignment> findAllByDeviceIdOrderByAssignedAtDesc(UUID deviceId);
 }
