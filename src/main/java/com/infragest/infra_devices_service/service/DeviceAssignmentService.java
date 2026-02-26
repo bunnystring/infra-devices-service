@@ -2,7 +2,9 @@ package com.infragest.infra_devices_service.service;
 
 import com.infragest.infra_devices_service.entity.DeviceAssignment;
 import com.infragest.infra_devices_service.enums.DeviceStatusEnum;
+import com.infragest.infra_devices_service.model.DeviceAssignmentActiveRs;
 import com.infragest.infra_devices_service.model.DeviceAssignmentDto;
+import com.infragest.infra_devices_service.model.DevicesBatchRq;
 
 import java.util.List;
 import java.util.UUID;
@@ -46,8 +48,8 @@ public interface DeviceAssignmentService {
     /**
      * Verifica si un dispositivo tiene una asignación activa en este momento.
      *
-     * @param deviceId Identificador único del dispositivo.
+     * @param devicesBatchRq Identificador único del dispositivo.
      * @return {@code true} si el dispositivo tiene una asignación activa (releasedAt es null), {@code false} en caso contrario.
      */
-    boolean hasActiveAssignment(UUID deviceId);
+    List<DeviceAssignmentActiveRs> hasActiveAssignment(DevicesBatchRq devicesBatchRq);
 }
