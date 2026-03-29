@@ -241,11 +241,13 @@ public class DeviceController {
             @ApiResponse(responseCode = "500", description = "Error interno")
     })
     @PostMapping("/restore")
-    public ResponseEntity<Map<String, Object>> restoreDevices(@Valid @RequestBody RestoreDevicesRq rq) {
+    public ResponseEntity<ApiResponseDto<Void>> restoreDevices(@Valid @RequestBody RestoreDevicesRq rq) {
 
         // Delegamos el listado tipado de RestoreItem directamente al servicio
-        Map<String, Object> resp = deviceService.restoreDeviceStates(rq.getItems());
-        return ResponseEntity.ok(resp);
+        deviceService.restoreDeviceStates(rq.getItems());
+
+        // Crear la respuesta usando ResponseFactory
+        return ResponseEntity.ok(ResponseFactory.success("Estados restaurados exitosamente.", null));
     }
 
     /**

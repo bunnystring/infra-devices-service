@@ -10,6 +10,10 @@ public abstract class MessageException {
     public static final String DEVICE_IDS_CANNOT_BE_EMPTY = "The list of IDs cannot be empty.";
     public static final String DEVICE_NOT_FOUND_BY_IDS = "The following devices were not found: %s.";
     public static final String DEVICE_ERROR_UPDATING_STATES = "An error occurred while updating the states of devices.";
+    public static final String DEVICES_LIST_CANNOT_BE_EMPTY = "The list of devices cannot be empty.";
+    public static final String DEVICE_MISSING_STATE = "Missing state for device %s.";
+    public static final String DATABASE_ERROR = "Database error occurred.";
+    public static final String INVALID_REQUEST_PAYLOAD = "Invalid request payload.";
 
     // Mensajes específicos para DeviceAssignment
     public static final String DEVICE_ALREADY_ASSIGNED = "The device %s is already assigned to another order.";
