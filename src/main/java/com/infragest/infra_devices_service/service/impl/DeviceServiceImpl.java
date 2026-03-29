@@ -329,9 +329,10 @@ public class DeviceServiceImpl implements DeviceService {
      */
     @Override
     @Transactional
-    public Map<String, Object> restoreDeviceStates(List<RestoreDevicesRq.RestoreItem> items) {
+    public void restoreDeviceStates(List<RestoreDevicesRq.RestoreItem> items) {
+
         if (items == null || items.isEmpty()) {
-            return Map.of("success", false, "message", "items empty");
+            throw new DeviceException(MessageException.DEVICES_LIST_CANNOT_BE_EMPTY, DeviceException.Type.BAD_REQUEST);
         }
 
         try {
@@ -345,7 +346,7 @@ public class DeviceServiceImpl implements DeviceService {
             Set<UUID> foundIds = foundDevices.stream().map(Device::getId).collect(Collectors.toSet());
             List<UUID> missingIds = ids.stream().filter(id -> !foundIds.contains(id)).collect(Collectors.toList());
             if (!missingIds.isEmpty()) {
-                return Map.of("success", false, "message", String.format("Devices not found: %s", missingIds));
+                throw new DeviceException(MessageException.DEVICE_NOT_FOUND_BY_IDS, DeviceException.Type.NOT_FOUND);
             }
 
             // Crear un mapeo entre IDs y sus estados objetivo
@@ -358,7 +359,7 @@ public class DeviceServiceImpl implements DeviceService {
 
                 // Verificar si falta el estado objetivo
                 if (targetState == null) {
-                    return Map.of("success", false, "message", String.format("Missing state for device %s", deviceId));
+                    throw new DeviceException(String.format(MessageException.DEVICE_MISSING_STATE, deviceId), DeviceException.Type.NOT_FOUND);
                 }
 
                 // Si el estado objetivo es GOOD_CONDITION, liberar asignaciones activas
@@ -367,7 +368,7 @@ public class DeviceServiceImpl implements DeviceService {
                         deviceAssignmentService.releaseDeviceFromOrder(deviceId, targetState);
                     } catch (DeviceException e) {
                         log.warn("Failed to release assignment for device {}: {}", deviceId, e.getMessage());
-                        throw e; // Escalar la excepción para manejarlo adecuadamente
+                        throw e;
                     }
                 }
 
@@ -381,14 +382,13 @@ public class DeviceServiceImpl implements DeviceService {
             // Guardar actualizaciones en la base de datos
             deviceRepository.saveAll(foundDevices);
             log.info("Successfully restored states for devices: {}", ids);
-            return Map.of("success", true, "message", "Device states restored successfully");
 
         } catch (DataAccessException dae) {
             log.error("Database error while restoring device states: {}", dae.getMessage(), dae);
-            return Map.of("success", false, "message", "Database error");
+            throw new DeviceException(MessageException.DATABASE_ERROR, DeviceException.Type.INTERNAL_SERVER);
         } catch (Exception ex) {
             log.error("Error processing device state restoration: {}", ex.getMessage(), ex);
-            return Map.of("success", false, "message", "Invalid request payload");
+            throw new DeviceException(MessageException.INVALID_REQUEST_PAYLOAD, DeviceException.Type.INTERNAL_SERVER);
         }
     }
 

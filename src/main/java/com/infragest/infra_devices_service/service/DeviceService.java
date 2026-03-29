@@ -109,7 +109,7 @@ public interface DeviceService {
      * @param items lista de {@link RestoreDevicesRq.RestoreItem} con deviceId y state
      * @return mapa con al menos {"success": Boolean} y opcional "message"
      */
-    Map<String, Object> restoreDeviceStates(List<RestoreDevicesRq.RestoreItem> items);
+    void restoreDeviceStates(List<RestoreDevicesRq.RestoreItem> items);
 
 
     /**
