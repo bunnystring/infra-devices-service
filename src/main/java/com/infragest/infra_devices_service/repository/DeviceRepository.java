@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -55,4 +56,13 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE) // Bloqueo pesimista
     List<Device> findAllByIdIn(List<UUID> ids);
+
+    /**
+     * Busca dispositivos por múltiples códigos de barras.
+     * Útil para validar duplicados en cargas masivas.
+     *
+     * @param barcodes conjunto de códigos de barras a buscar
+     * @return lista de dispositivos que coinciden con los barcodes
+     */
+    List<Device> findByBarcodeIn(Set<String> barcodes);
 }
